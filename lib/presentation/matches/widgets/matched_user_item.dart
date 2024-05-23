@@ -8,6 +8,7 @@ import '../../../widgets/thermometer_cold.dart';
 import '../../../widgets/thermometer_widget.dart';
 import '../../liked_me_page/controller/liked_me_controller.dart';
 import '../../liked_me_page/models/notification_item_model.dart';
+import '../../liked_me_page/widgets/notification_item_widget.dart';
 import '../../profile_screen/profile_screen.dart';
 
 // ignore: must_be_immutable
@@ -42,8 +43,16 @@ class MatchedUerItem extends StatelessWidget {
           }
 
           return InkWell(
-            onTap: () {
-              Get.to(() => ProfileScreen(notificationItemModelObj.id!.value));
+            onTap: () async {
+              bool isAccountDeleted =
+                  await FirebaseServices.getIsAccountDeleted(
+                      notificationItemModelObj.id!.value);
+              bool isDeleted =
+                  await getIsDeleted(notificationItemModelObj.id!.value);
+              print(isDeleted);
+              if (!isDeleted && !isAccountDeleted) {
+                Get.to(() => ProfileScreen(notificationItemModelObj.id!.value));
+              }
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,

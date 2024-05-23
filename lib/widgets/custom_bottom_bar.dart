@@ -77,8 +77,10 @@ class CustomBottomBar extends StatelessWidget {
             }),
             onTap: (index) {
               controller.selectedIndex.value = index;
-              // controller.selectedIndex.value = index;
-              // onChanged?.call(bottomMenuList[index].type);
+              // final homeController = Get.find<HomeController>();
+              // if (index != 0) {
+              //   homeController.stopTimer();
+              // }
             },
           ),
         ),

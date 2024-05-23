@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mifever/core/app_export.dart';
 import 'package:mifever/widgets/app_bar/appbar_leading_image.dart';
@@ -7,6 +8,7 @@ import 'package:mifever/widgets/custom_elevated_button.dart';
 import 'package:mifever/widgets/custom_text_form_field.dart';
 
 import '../../data/sevices/google_places_services.dart';
+import '../question_five_screen/controller/question_five_controller.dart';
 import 'controller/edit_other_details_controller.dart';
 import 'models/frame10_item_model.dart';
 import 'widgets/other_details_item_widget.dart';
@@ -55,21 +57,17 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
                         runSpacing: 5.v,
                         spacing: 5.v,
                         children: List.generate(
-                          controller.availableLocationControllerList.length,
+                          controller.availableLocation.length,
                           (index) => Visibility(
                             visible: controller
-                                .availableLocationControllerList[index]
-                                .value
-                                .text
-                                .isNotEmpty,
+                                    .availableLocation[index].locationName !=
+                                'lbl_enter_location'.tr,
                             child: _buildMadridEurope(
                                 text:
-                                    '${controller.availableLocationControllerList[index].value.text}',
+                                    '${controller.availableLocation[index].locationName}',
                                 onTap: () {
-                                  if (controller.availableLocationControllerList
-                                          .length >
-                                      1) {
-                                    controller.availableLocationControllerList
+                                  if (controller.availableLocation.length > 1) {
+                                    controller.availableLocation
                                         .removeAt(index);
                                   }
                                 }),
@@ -81,7 +79,7 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
                     Obx(
                       () => Column(
                         children: List.generate(
-                          controller.availableLocationControllerList.length,
+                          controller.availableLocation.length,
                           (index) => Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -90,8 +88,30 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
                                 style: CustomTextStyles.titleSmallGray60002,
                               ),
                               SizedBox(height: 6.v),
-                              _buildLocationField(controller
-                                  .availableLocationControllerList[index]),
+                              _buildLocationField(
+                                  text: controller
+                                      .availableLocation[index].locationName,
+                                  onTap: () async {
+                                    await GooglePlacesApiServices
+                                            .placeSelectAPI(
+                                                Get.context!,
+                                                controller
+                                                    .availableLocation[index]
+                                                    .locationName)
+                                        .then((value) {
+                                      controller.availableLocation[index] =
+                                          LocationModel(
+                                              name: 'Location${index + 1}',
+                                              latLng: GeoPoint(
+                                                  value!.result.geometry!
+                                                      .location.lat,
+                                                  value.result.geometry!
+                                                      .location.lng),
+                                              locationName: value
+                                                  .result.formattedAddress
+                                                  .toString());
+                                    });
+                                  }),
                               SizedBox(height: 21.v),
                             ],
                           ),
@@ -100,8 +120,10 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
                     ),
                     InkWell(
                       onTap: () {
-                        controller.availableLocationControllerList
-                            .add(TextEditingController());
+                        controller.availableLocation.add(LocationModel(
+                            name: 'Location'.tr,
+                            latLng: GeoPoint(0.0, 0.0),
+                            locationName: 'lbl_enter_location'.tr));
                       },
                       child: Text(
                         "lbl_add_more".tr,
@@ -121,12 +143,14 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
   }
 
   /// Section Widget
-  Widget _buildLocationField(TextEditingController textEditingController) {
+  Widget _buildLocationField(
+      {required String text, required VoidCallback onTap}) {
     return CustomTextFormField(
       readOnly: true,
-      controller: textEditingController,
-      hintText: "lbl_enter_location".tr,
-      hintStyle: CustomTextStyles.bodySmall12,
+      hintText: text,
+      hintStyle: text == "lbl_enter_location".tr
+          ? CustomTextStyles.bodySmall12
+          : theme.textTheme.titleSmall,
       prefix: Container(
         margin: EdgeInsets.fromLTRB(12.h, 12.v, 8.h, 12.v),
         child: CustomImageView(
@@ -139,25 +163,7 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
         maxHeight: 44.v,
       ),
       textInputType: TextInputType.name,
-      validator: (value) {
-        if (value!.trim().isEmpty) {
-          return "lbl_enter_location".tr;
-        }
-        return null;
-      },
-      onTap: () async {
-        await GooglePlacesApiServices.placeSelectAPI(
-                Get.context!, textEditingController.text)
-            .then((value) {
-          textEditingController.text =
-              value!.result.formattedAddress.toString();
-          isButtonDisable();
-          // controller.locationLatLong.value = GeoPoint(
-          //   value.result.geometry!.location.lat,
-          //   value.result.geometry!.location.lng,
-          // );
-        });
-      },
+      onTap: onTap,
     );
   }
 
@@ -338,9 +344,8 @@ class EditOtherDetailsScreen extends GetWidget<EditOtherDetailsController> {
   }
 
   isButtonDisable() {
-    controller.isButtonDisable.value = controller
-                .availableLocationControllerList
-                .firstWhereOrNull((element) => element.text.isEmpty) !=
+    controller.isButtonDisable.value = controller.availableLocation
+                .firstWhereOrNull((element) => element.locationName.isEmpty) !=
             null
         ? true
         : false;

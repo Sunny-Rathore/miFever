@@ -118,7 +118,7 @@ class FilterBottomSheetController extends GetxController {
       maxAge: ageRange.value.end.round(),
       maxDistance: distanceSliderValue.value,
       gender: selectedInterest.value,
-      currentUserLocation: locationLatLong.value,
+      searchLocation: locationLatLong.value,
       filter: filter,
     );
     ProgressDialogUtils.hideProgressDialog();
@@ -182,7 +182,7 @@ class FilterBottomSheetController extends GetxController {
         maxAge: ageRange.value.end.round(),
         maxDistance: distanceSliderValue.value,
         gender: selectedInterest.value,
-        currentUserLocation: locationLatLong.value,
+        searchLocation: locationLatLong.value,
         filter: filter);
     ProgressDialogUtils.hideProgressDialog();
     Get.back();

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mifever/core/app_export.dart';
 import 'package:mifever/widgets/app_bar/appbar_leading_image.dart';
@@ -80,18 +81,17 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
                       spacing: 12.v,
                       runSpacing: 10.v,
                       children: List.generate(
-                          controller.locationLength.value,
+                          controller.locationList.length,
                           (index) => index.isEqual(0)
                               ? Text('')
                               : _buildMadridEurope(
                                   text: controller
-                                      .availableLocationTextController[
-                                          index - 1]
-                                      .text,
+                                      .locationList[index - 1].locationName,
                                   onCancel: () {
-                                    controller.locationLength.value--;
-                                    controller.availableLocationTextController
-                                        .removeAt(index - 1);
+                                    //controller.locationLength.value--;
+                                    // controller.availableLocationTextController
+                                    //     .removeAt(index - 1);
+                                    controller.locationList.removeAt(index - 1);
                                   })),
                     ),
                   ),
@@ -99,7 +99,7 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
                   Obx(
                     () => Column(
                       children: List.generate(
-                        controller.locationLength.value,
+                        controller.locationList.length,
                         (index) => Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -108,8 +108,31 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
                               style: CustomTextStyles.titleSmallGray60002,
                             ),
                             SizedBox(height: 6.v),
-                            _buildLocationField(controller
-                                .availableLocationTextController[index]),
+                            _buildAvailableLocation(
+                                text:
+                                    controller.locationList[index].locationName,
+                                // controller
+                                //     .availableLocationTextController[index],
+                                onTap: () async {
+                                  await GooglePlacesApiServices.placeSelectAPI(
+                                          Get.context!,
+                                          controller
+                                              .locationList[index].locationName)
+                                      .then((value) {
+                                    controller.locationList[index] =
+                                        LocationModel(
+                                            name: 'Location${index + 1}',
+                                            latLng: GeoPoint(
+                                                value!.result.geometry!.location
+                                                    .lat,
+                                                value.result.geometry!.location
+                                                    .lng),
+                                            locationName: value
+                                                .result.formattedAddress
+                                                .toString());
+                                    controller.isMakeButtonDisable();
+                                  });
+                                }),
                             SizedBox(height: 21.v),
                           ],
                         ),
@@ -120,9 +143,10 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
                   InkWell(
                     onTap: () {
                       if (!controller.isButtonDisable.value) {
-                        controller.locationLength.value++;
-                        controller.availableLocationTextController
-                            .add(TextEditingController());
+                        controller.locationList.add(LocationModel(
+                            name: 'Location'.tr,
+                            latLng: GeoPoint(0.0, 0.0),
+                            locationName: 'lbl_enter_location'.tr));
                         controller.isMakeButtonDisable();
                       }
                     },
@@ -222,13 +246,36 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
           textEditingController.text =
               value!.result.formattedAddress.toString();
           controller.isMakeButtonDisable();
-          // controller.locationLatLong.value = GeoPoint(
-          //   value.result.geometry!.location.lat,
-          //   value.result.geometry!.location.lng,
-          // );
+          controller.locationLatLong.value = GeoPoint(
+            value.result.geometry!.location.lat,
+            value.result.geometry!.location.lng,
+          );
         });
       },
     );
+  }
+
+  Widget _buildAvailableLocation(
+      {required String text, required VoidCallback onTap}) {
+    return CustomTextFormField(
+        readOnly: true,
+        hintText: text,
+        hintStyle: text == "lbl_enter_location".tr
+            ? CustomTextStyles.bodySmall12
+            : theme.textTheme.titleSmall,
+        prefix: Container(
+          margin: EdgeInsets.fromLTRB(12.h, 12.v, 8.h, 12.v),
+          child: CustomImageView(
+            imagePath: ImageConstant.imgLocation01,
+            height: 20.adaptSize,
+            width: 20.adaptSize,
+          ),
+        ),
+        prefixConstraints: BoxConstraints(
+          maxHeight: 44.v,
+        ),
+        textInputType: TextInputType.name,
+        onTap: onTap);
   }
 
   /// Section Widget
@@ -263,6 +310,12 @@ class QuestionFiveScreen extends GetWidget<QuestionFiveController> {
     if (!isValid) {
       return;
     } else {
+      // print(controller.locationList);
+      // for (var location in controller.locationList) {
+      //   print('Name: ${location.name}');
+      //   print('Name: ${location.latLng.latitude}');
+      //   print('Name: ${location.locationName}');
+      // }
       Get.toNamed(AppRoutes.questionSixScreen);
     }
   }

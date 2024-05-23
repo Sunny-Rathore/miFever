@@ -1,6 +1,8 @@
 // ignore_for_file: sdk_version_since
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:mifever/core/app_export.dart';
 import 'package:mifever/presentation/profile_screen/profile_screen.dart';
 import 'package:mifever/widgets/app_bar/appbar_leading_image.dart';
@@ -19,6 +21,7 @@ import '../../widgets/custom_elevated_button.dart';
 import '../../widgets/themometer_horizontal.dart';
 import '../../widgets/thermomerter_horizontal_cold.dart';
 import '../fileter_bottomsheet/filter_bottomsheet.dart';
+import '../notifications/notifications.dart';
 import 'controller/home_controller.dart';
 
 // ignore_for_file: must_be_immutable
@@ -39,10 +42,37 @@ class HomeScreen extends GetWidget<HomeController> {
           child: Stack(
             children: [
               Obx(
-                () => controller.thermoValue.value == 0
-                    ? _themometerCold()
-                    : _themometerHot(),
+                () => StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseServices.getThermometerValueAsStream(
+                        controller.receiverId.value),
+                    builder: (context, thermoSnapshot) {
+                      if (thermoSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return SizedBox.shrink();
+                      }
+                      var snapShotData = thermoSnapshot.data;
+                      ThermometerModel thermometerModel = ThermometerModel(
+                          timestamp: DateTime.now().toString(),
+                          roomId: '',
+                          percentageValue: 0);
+                      if (snapShotData!.data() != null) {
+                        thermometerModel = ThermometerModel.fromJson(
+                            snapShotData.data() as Map<String, dynamic>);
+                      }
+                      print(
+                          'thermoMeter value:${thermometerModel.percentageValue}');
+                      return thermometerModel.percentageValue == 0
+                          ? _themometerCold(
+                              thermometerModel.percentageValue.toDouble())
+                          : _themometerHot(
+                              thermometerModel.percentageValue.toDouble());
+                    }),
               ),
+              // Obx(
+              //   () => controller.thermoValue.value == 0
+              //       ? _themometerCold()
+              //       : _themometerHot(),
+              // ),
               FutureBuilder<List<UserModel>>(
                 future: controller.getUser(),
                 builder: (context, snapshot) {
@@ -58,9 +88,8 @@ class HomeScreen extends GetWidget<HomeController> {
                   _swipeItems.clear();
                   var data = snapshot.data;
                   _users = data?.map((e) => e).toList() ?? <UserModel>[];
-                  if (_users.length > 0) {
-                    controller.getThemometerValue(_users[0].id!);
-                  }
+                  int userIndex = 0;
+
                   for (var user in _users) {
                     _swipeItems.add(SwipeItem(
                       content: InkWell(
@@ -69,8 +98,8 @@ class HomeScreen extends GetWidget<HomeController> {
                               token: user.token!,
                               type: NotificationType.View.name,
                               notificationTo: user.id!);
-                          controller.sendNotification(
-                              user: user, type: NotificationType.View.name);
+                          // controller.sendNotification(
+                          //     user: user, type: NotificationType.View.name);
                           Get.to(() => ProfileScreen(user.id!));
                           AnalyticsService.view(user.name ?? '');
                         },
@@ -79,28 +108,56 @@ class HomeScreen extends GetWidget<HomeController> {
                         },
                         child: _buildUserCard(user),
                       ),
-                      likeAction: () {
-                        controller.onSwipe(
-                            token: user.token!,
-                            type: NotificationType.Like.name,
-                            notificationTo: user.id!);
-                        FirebaseServices.addLike(receiverId: user.id!);
-                        controller.sendNotification(
-                            user: user, type: NotificationType.Like.name);
-                        controller.getThemometerValue(user.id!);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("Liked"),
-                          duration: Duration(milliseconds: 500),
-                        ));
-                        AnalyticsService.like(user.name ?? '');
+                      likeAction: () async {
+                        UserModel? currentUser =
+                            await FirebaseServices.getCurrentUser();
+                        int likeCount = await FirebaseServices.getTodaysLike();
+                        if (currentUser!.planName!.isNotEmpty &&
+                            likeCount > 100) {
+                          Fluttertoast.showToast(
+                              msg: 'lbl_upgrade_your_plan'.tr);
+                          Get.toNamed(AppRoutes.subscriptionPlansScreen,
+                              parameters: {'index': '0'});
+                        } else {
+                          controller.onSwipe(
+                              token: user.token!,
+                              type: NotificationType.Like.name,
+                              notificationTo: user.id!);
+                          FirebaseServices.addLike(receiverId: user.id!);
+                          controller.sendNotification(
+                              user: user, type: NotificationType.Like.name);
+                          userIndex++;
+                          if (_users.length > userIndex) {
+                            controller.receiverId.value =
+                                _users[userIndex].id ?? '';
+                            controller.stopTimer();
+                            controller
+                                .addThermometer(_users[userIndex].id ?? '');
+                          } else {
+                            controller.stopTimer();
+                          }
+                          Fluttertoast.showToast(
+                              msg: 'Liked', gravity: ToastGravity.TOP_RIGHT);
+                          AnalyticsService.like(user.name ?? '');
+                          controller.profileIndex.value = 0;
+                        }
                       },
                       nopeAction: () {
+                        userIndex++;
+                        if (_users.length > userIndex) {
+                          controller.receiverId.value =
+                              _users[userIndex].id ?? '';
+                          controller.stopTimer();
+                          controller.addThermometer(_users[userIndex].id ?? '');
+                        } else {
+                          controller.stopTimer();
+                        }
+                        controller.profileIndex.value = 0;
                         if (controller.isWantToDislike.value) {
                           controller.onSwipe(
                               token: user.token!,
                               type: NotificationType.DisLike.name,
                               notificationTo: user.id!);
-                          controller.getThemometerValue(user.id!);
                           ThermometerModel thermometerModel = ThermometerModel(
                               timestamp: DateTime.now().toString(),
                               roomId:
@@ -110,10 +167,8 @@ class HomeScreen extends GetWidget<HomeController> {
                           FirebaseServices.addThermometerValue(
                               thermometerModel);
                           controller.isWantToDislike.value = false;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text("Dislike"),
-                            duration: Duration(milliseconds: 500),
-                          ));
+                          Fluttertoast.showToast(
+                              msg: 'Dislike', gravity: ToastGravity.TOP_RIGHT);
                           AnalyticsService.dislike(user.name ?? '');
                         }
                       },
@@ -133,6 +188,9 @@ class HomeScreen extends GetWidget<HomeController> {
                               Container(
                                 height: 550,
                                 child: SwipeCards(
+                                  nopeTag: CustomImageView(
+                                    imagePath: ImageConstant.imgRemove,
+                                  ),
                                   upSwipeAllowed: false,
                                   rightSwipeAllowed: true,
                                   matchEngine: _matchEngine,
@@ -142,12 +200,15 @@ class HomeScreen extends GetWidget<HomeController> {
                                         child: _swipeItems[index].content);
                                   },
                                   onStackFinished: () {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(SnackBar(
-                                      content: Text("Stack Finished"),
-                                      duration: Duration(milliseconds: 500),
-                                    ));
+                                    controller.stopTimer();
+
+                                    // ScaffoldMessenger.of(context)
+                                    //     .showSnackBar(SnackBar(
+                                    //   content: Text("Stack Finished"),
+                                    //   duration: Duration(milliseconds: 500),
+                                    // ));
                                     controller.userLength.value = 0;
+                                    controller.profileIndex.value = 0;
                                   },
                                   itemChanged: (SwipeItem item, int index) {
                                     print("item: Swiped, index: $index");
@@ -165,98 +226,105 @@ class HomeScreen extends GetWidget<HomeController> {
     );
   }
 
-  Visibility _themometerHot() {
-    return Visibility(
-      visible: controller.userLength.value != 0,
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-                color: appTheme.red50,
-                borderRadius: BorderRadius.circular(40.h)),
-            margin: EdgeInsets.symmetric(horizontal: 20.h),
-            width: SizeUtils.width,
-            height: 60.h,
-            child: Obx(() => InkWell(
-                  onTap: () {
-                    Get.defaultDialog(
-                        titleStyle: TextStyle(fontSize: 15.fSize),
-                        title: 'lbl_how_thermometer_works'.tr,
-                        middleText: 'lbl_thermometer_is_a'.tr);
-                  },
-                  child: ThermoTestHorizontal(
-                      value: controller.thermoValue.value / 100),
-                )),
-          ),
-          Positioned(
-            left: 43.h,
-            top: 20.v,
-            child: CustomImageView(
-              height: 20.v,
-              width: 20.h,
-              imagePath: 'assets/images/fire.svg',
-              fit: BoxFit.contain,
+  _themometerHot(double value) {
+    return Obx(
+      () => Visibility(
+        visible: controller.userLength.value != 0,
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                  color: appTheme.red50,
+                  borderRadius: BorderRadius.circular(40.h)),
+              margin: EdgeInsets.symmetric(horizontal: 20.h),
+              width: SizeUtils.width,
+              height: 60.h,
+              child: InkWell(
+                onTap: () {
+                  Get.defaultDialog(
+                      titleStyle: TextStyle(fontSize: 15.fSize),
+                      title: 'lbl_how_thermometer_works'.tr,
+                      middleText: 'lbl_thermometer_is_a'.tr);
+                },
+                child: ThermoTestHorizontal(value: value / 100
+                    //controller.thermoValue.value / 100,
+                    ),
+              ),
             ),
-          ),
-          Positioned(
+            Positioned(
+              left: 43.h,
+              top: 20.v,
+              child: CustomImageView(
+                height: 20.v,
+                width: 20.h,
+                imagePath: 'assets/images/fire.svg',
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
               right: 30.v,
               top: 20.h,
-              child: Obx(
-                () => Text(
-                  controller.thermoValue.value.toString() + '%',
-                  //"lbl_10".tr,
-                  style: CustomTextStyles.labelLargeBlack900,
-                ),
-              )),
-        ],
+              child: Text(
+                value.round().toString() + '%',
+                //controller.thermoValue.value.toString() + '%',
+                //"lbl_10".tr,
+                style: CustomTextStyles.labelLargeBlack900,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Visibility _themometerCold() {
-    return Visibility(
-      visible: controller.userLength.value != 0,
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-                color: Color(0XFFE1EEFB),
-                borderRadius: BorderRadius.circular(40.h)),
-            margin: EdgeInsets.symmetric(horizontal: 20.h),
-            width: SizeUtils.width,
-            height: 60.h,
-            child: Obx(() => InkWell(
-                  onTap: () {
-                    Get.defaultDialog(
-                        titleStyle: TextStyle(fontSize: 15.fSize),
-                        title: 'lbl_how_thermometer_works'.tr,
-                        middleText: 'lbl_thermometer_is_a'.tr);
-                  },
-                  child: ThermoTestHorizontalCold(
-                      value: controller.thermoValue.value / 100),
-                )),
-          ),
-          Positioned(
-            left: 43.h,
-            top: 21.v,
-            child: CustomImageView(
-              height: 20.v,
-              width: 20.h,
-              imagePath: 'assets/images/Frame 12.svg',
-              fit: BoxFit.contain,
+  _themometerCold(double value) {
+    return Obx(
+      () => Visibility(
+        visible: controller.userLength.value != 0,
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                  color: Color(0XFFE1EEFB),
+                  borderRadius: BorderRadius.circular(40.h)),
+              margin: EdgeInsets.symmetric(horizontal: 20.h),
+              width: SizeUtils.width,
+              height: 60.h,
+              child: InkWell(
+                onTap: () {
+                  Get.defaultDialog(
+                      titleStyle: TextStyle(fontSize: 15.fSize),
+                      title: 'lbl_how_thermometer_works'.tr,
+                      middleText: 'lbl_thermometer_is_a'.tr);
+                },
+                child: ThermoTestHorizontalCold(
+                  value: value / 100,
+                  //value: controller.thermoValue.value / 100,
+                ),
+              ),
             ),
-          ),
-          Positioned(
+            Positioned(
+              left: 43.h,
+              top: 21.v,
+              child: CustomImageView(
+                height: 20.v,
+                width: 20.h,
+                imagePath: 'assets/images/Frame 12.svg',
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
               right: 30.v,
               top: 20.h,
-              child: Obx(
-                () => Text(
-                  controller.thermoValue.value.toString() + '%',
-                  //"lbl_10".tr,
-                  style: CustomTextStyles.labelLargeBlack900,
-                ),
-              )),
-        ],
+              child: Text(
+                value.round().toString() + '%',
+                //controller.thermoValue.value.toString() + '%',
+                //"lbl_10".tr,
+                style: CustomTextStyles.labelLargeBlack900,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -303,6 +371,12 @@ class HomeScreen extends GetWidget<HomeController> {
       );
 
   _buildUserCard(UserModel user) {
+    List allImages = [];
+    List wayAlbum = user.wayAlbum ?? [];
+    List lifeAlbum = user.lifeAlbum ?? [];
+    allImages.addAll(wayAlbum);
+    allImages.addAll(lifeAlbum);
+
     return Stack(
       children: [
         Align(
@@ -314,16 +388,59 @@ class HomeScreen extends GetWidget<HomeController> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                CustomImageView(
-                  imagePath: user.lifeAlbum?[0],
-                  //ImageConstant.imgRectangle17844,
-                  height: 482.v,
-                  width: 335.h,
-                  radius: BorderRadius.circular(
-                    12.h,
+                Obx(
+                  () => CustomImageView(
+                    imagePath: allImages[controller.profileIndex.value],
+                    //ImageConstant.imgRectangle17844,
+                    height: 482.v,
+                    width: 335.h,
+                    radius: BorderRadius.circular(
+                      12.h,
+                    ),
+                    alignment: Alignment.center,
+                    fit: BoxFit.cover,
                   ),
-                  alignment: Alignment.center,
-                  fit: BoxFit.cover,
+                ),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 5.h),
+                    child: Row(
+                      children: List.generate(
+                        allImages.length,
+                        (index) => Expanded(
+                          child: Obx(
+                            () => Stack(
+                              children: [
+                                Container(
+                                  constraints: BoxConstraints(maxHeight: 8.v),
+                                  margin: EdgeInsets.only(
+                                      left: 2, top: 5.h, right: 2),
+                                  height: 8.v,
+                                  decoration: BoxDecoration(
+                                      color:
+                                          controller.profileIndex.value >= index
+                                              ? Colors.white
+                                              : Colors.grey.shade600,
+                                      borderRadius: BorderRadius.circular(5)),
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    controller.profileIndex.value = index;
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.all(5),
+                                    height: 50.v,
+                                    // color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 Align(
                   alignment: Alignment.bottomCenter,
@@ -336,7 +453,6 @@ class HomeScreen extends GetWidget<HomeController> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          // Color.fromRGBO(0, 0, 0, 0.18),
                           Color.fromRGBO(0, 0, 0, 0.5),
                           Color.fromRGBO(0, 0, 0, 0.9),
                         ],
@@ -369,7 +485,9 @@ class HomeScreen extends GetWidget<HomeController> {
                                   controller
                                           .calculateDistance(
                                               controller.filteredLocation.value,
-                                              user.location!)
+                                              user.isCurrentLocation!
+                                                  ? user.location!
+                                                  : user.currentLocationLatLng!)
                                           .round()
                                           .toString() +
                                       "lbl_2_km_away".tr,
@@ -392,9 +510,13 @@ class HomeScreen extends GetWidget<HomeController> {
                                 ),
                                 Padding(
                                   padding: EdgeInsets.only(left: 4.h),
-                                  child: Text(
-                                    "${user.locationText}",
-                                    style: CustomTextStyles.labelLargeGray200,
+                                  child: SizedBox(
+                                    width: SizeUtils.width * 0.5,
+                                    child: Text(
+                                      "${user.locationText}",
+                                      overflow: TextOverflow.ellipsis,
+                                      style: CustomTextStyles.labelLargeGray200,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -430,6 +552,17 @@ class HomeScreen extends GetWidget<HomeController> {
         ),
       ),
       actions: [
+        AppbarTrailingImage(
+          onTap: () {
+            Get.to(() => NotificationsScreen());
+          },
+          imagePath: 'assets/images/bell_icon.svg',
+          //ImageConstant.imgFilterHorizontalGray60004,
+          margin: EdgeInsets.symmetric(
+            // horizontal: 20.h,
+            vertical: 13.v,
+          ),
+        ),
         AppbarTrailingImage(
           onTap: () {
             Get.to(

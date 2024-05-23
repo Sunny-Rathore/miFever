@@ -7,13 +7,13 @@ import 'en_us/en_us_translations.dart';
 
 class LocalizationService extends Translations {
   // Default locale
-  static const locale = Locale('en', 'US');
+  // static const locale = Locale('en', 'US');
 
-  static final locales = [
-    const Locale('en'),
-    const Locale('es'),
-    const Locale('pt'),
-  ];
+  // static final locales = [
+  //   const Locale('en'),
+  //   const Locale('es'),
+  //   const Locale('pt'),
+  // ];
 
   // Keys and their translations
   // Translations are separated maps in `lang` file
@@ -27,11 +27,11 @@ class LocalizationService extends Translations {
   // Gets locale from language, and updates the locale
   static void changeLocale(String lang) async {
     await PrefUtils.setLang(lang);
-    Get.updateLocale(Locale(lang));
+    await Get.updateLocale(Locale(lang));
   }
 
-  static Future<void> loadSavedLocale() async {
-    final String savedLang = PrefUtils.getLang();
-    Get.updateLocale(Locale(savedLang));
-  }
+  // static Future<void> loadSavedLocale() async {
+  //   final String savedLang = PrefUtils.getLang();
+  //   Get.updateLocale(Locale(savedLang));
+  // }
 }

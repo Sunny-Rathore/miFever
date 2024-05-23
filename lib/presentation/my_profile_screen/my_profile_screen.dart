@@ -14,6 +14,7 @@ import 'package:mifever/widgets/custom_elevated_button.dart';
 import 'package:mifever/widgets/custom_switch.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/utils/progress_dialog_utils.dart';
 import '../../data/sevices/crop_Image_service.dart';
 import '../../widgets/custom_bottom_bar.dart';
 import '../../widgets/custom_icon_button.dart';
@@ -116,6 +117,65 @@ class MyProfileScreen extends GetWidget<MyProfileController> {
                         languages: "lbl_privacy_policy".tr,
                       ),
                     ),
+                    SizedBox(height: 16.v),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.h),
+                      child: _buildFrame(
+                        onTap: () async {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                //contentPadding: EdgeInsets.all(0.h),
+                                title: Text(
+                                    'lbl_are_you_sure_want_to_delete_account'
+                                        .tr,
+                                    style: TextStyle(
+                                        fontSize: 16.fSize,
+                                        fontWeight: FontWeight.w400)),
+                                actions: <Widget>[
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                        padding: EdgeInsets.only(right: 50.v),
+                                        shape: RoundedRectangleBorder()),
+                                    onPressed: () {
+                                      Get.back();
+                                    },
+                                    child: Text(
+                                      'No',
+                                      style: TextStyle(
+                                          color: appTheme.redA200,
+                                          fontSize: 15.fSize),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                        minimumSize: Size(100.v, 30.v),
+                                        backgroundColor: appTheme.redA200),
+                                    onPressed: () async {
+                                      ProgressDialogUtils.showProgressDialog();
+                                      UserModel user =
+                                          UserModel(isAccountDeleted: true);
+                                      await FirebaseServices.updateUser(user);
+                                      await FirebaseServices.deleteAccount();
+                                      PrefUtils.clearPreferencesData();
+                                      ProgressDialogUtils.hideProgressDialog();
+                                      Get.offAllNamed(
+                                          AppRoutes.onboardingScreen);
+                                    },
+                                    child: Text(
+                                      'Yes',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        languageSquare: ImageConstant.imgSecurityCheck,
+                        languages: "lbl_delete_account".tr,
+                      ),
+                    ),
                     SizedBox(height: 30.v),
                     CustomElevatedButton(
                       height: 40.v,
@@ -155,7 +215,7 @@ class MyProfileScreen extends GetWidget<MyProfileController> {
           }
           List<SubscriptionModel> _subscriptionsList = <SubscriptionModel>[];
           _subscriptionsList.clear();
-          var snapshotData = snapshot.data!.docs;
+          var snapshotData = snapshot.data?.docs ?? [];
           _subscriptionsList = snapshotData
               .map((e) =>
                   SubscriptionModel.fromJson(e.data() as Map<String, dynamic>))

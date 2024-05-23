@@ -22,7 +22,8 @@ class LocationService {
           Position position = await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.high);
           UserModel userModel = UserModel(
-              location: GeoPoint(position.latitude, position.longitude));
+              currentLocationLatLng:
+                  GeoPoint(position.latitude, position.longitude));
           FirebaseServices.updateUser(userModel);
         } catch (e) {
           log('Error during save location', error: e);

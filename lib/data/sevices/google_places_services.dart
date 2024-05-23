@@ -21,7 +21,7 @@ class GooglePlacesApiServices {
       onError: (response) {
         log("-->${response.status}");
       },
-      language: 'fr',
+      language: 'en',
       resultTextStyle: theme.textTheme.titleSmall,
       types: [],
       strictbounds: false,
@@ -81,6 +81,6 @@ class GooglePlacesApiServices {
     } catch (e) {
       log('Error: during get lat long from address $e');
       return GeoPoint(0.0, 0.0);
-    } 
+    }
   }
 }

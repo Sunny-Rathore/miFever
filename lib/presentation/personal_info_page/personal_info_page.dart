@@ -382,7 +382,7 @@ class PersonalInfoPage extends StatelessWidget {
                         _user.availableLocation?.length ?? 0,
                         (index) {
                           return AvailableLocationWidget(
-                              "${_user.availableLocation![index]}");
+                              "${_user.availableLocation![index].locationName}");
                         },
                       ),
                     ),

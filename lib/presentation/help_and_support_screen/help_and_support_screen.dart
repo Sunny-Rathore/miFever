@@ -8,6 +8,7 @@ import 'package:mifever/widgets/app_bar/appbar_leading_image.dart';
 import 'package:mifever/widgets/app_bar/appbar_subtitle.dart';
 import 'package:mifever/widgets/app_bar/custom_app_bar.dart';
 
+import '../../widgets/custom_drop_down.dart';
 import '../../widgets/custom_elevated_button.dart';
 import '../../widgets/custom_text_form_field.dart';
 import 'controller/help_and_support_controller.dart';
@@ -19,6 +20,28 @@ class HelpAndSupportScreen extends GetWidget<HelpAndSupportController> {
 
   @override
   Widget build(BuildContext context) {
+    List<SelectionPopupModel> reasonList = [
+      SelectionPopupModel(title: 'Account Issues', value: 'Account Issues'),
+      SelectionPopupModel(
+          title: 'Profile Assistance', value: 'Profile Assistance'),
+      SelectionPopupModel(title: 'Privacy Concerns', value: 'Privacy Concerns'),
+      SelectionPopupModel(title: 'Messaging', value: 'Messaging'),
+      SelectionPopupModel(
+          title: 'Subscription and Payments',
+          value: 'Subscription and Payments'),
+      SelectionPopupModel(
+          title: 'Technical Problems', value: 'Technical Problems'),
+      SelectionPopupModel(
+          title: 'Safety and Security', value: 'Safety and Security'),
+      SelectionPopupModel(
+          title: 'Features and Functionality',
+          value: 'Features and Functionality'),
+      SelectionPopupModel(
+          title: 'Community Guidelines', value: 'Community Guidelines'),
+      SelectionPopupModel(
+          title: 'Feedback and Suggestions', value: 'Feedback and Suggestions'),
+      SelectionPopupModel(title: 'Other', value: 'Other'),
+    ];
     return SafeArea(
       child: Scaffold(
         body: SingleChildScrollView(
@@ -28,6 +51,24 @@ class HelpAndSupportScreen extends GetWidget<HelpAndSupportController> {
               children: [
                 _buildAppBar(),
                 SizedBox(height: 8.v),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: CustomDropDown(
+                    hintText: controller.selectedReason.value.title,
+                    items: reasonList,
+                    prefix: Container(
+                        margin: EdgeInsets.fromLTRB(12.h, 12.v, 8.h, 12.v),
+                        child: Text('')),
+                    prefixConstraints: BoxConstraints(
+                      maxHeight: 44.v,
+                    ),
+                    onChanged: (value) {
+                      controller.selectedReason.value = value;
+                      print(controller.selectedReason.value.title);
+                      //controller.onSelected1(value);
+                    },
+                  ),
+                ),
                 Padding(
                   padding: EdgeInsets.all(12.0.h),
                   child: CustomTextFormField(
@@ -149,13 +190,15 @@ class HelpAndSupportScreen extends GetWidget<HelpAndSupportController> {
     } else {
       ProgressDialogUtils.showProgressDialog();
       HelpAndSupportModel model = HelpAndSupportModel(
-          userId: PrefUtils.getId(),
-          email: controller.helpController.text,
-          status: '');
+        userId: PrefUtils.getId(),
+        email: controller.helpController.text,
+        reason: controller.selectedReason.value.title,
+        status: '',
+      );
       await FirebaseServices.addHelAndSupport(model);
       controller.helpController.clear();
       ProgressDialogUtils.hideProgressDialog();
-      Fluttertoast.showToast(msg: 'We will get you soon');
+      Fluttertoast.showToast(msg: 'We will get back to you soon.');
       Get.back();
     }
   }

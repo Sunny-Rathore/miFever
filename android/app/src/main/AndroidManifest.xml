@@ -68,8 +68,12 @@
         <!--for user dafault notification icon -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@mipmap/notification_icon" />
         
+        <!--for user dafault notification icon  color-->
+        <meta-data 
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorPrimary" />
 
         <!-- for Stripe payment gateway -->
         <meta-data

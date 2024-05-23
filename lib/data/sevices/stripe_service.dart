@@ -117,6 +117,21 @@ class StripePaymentHandle {
         UserModel updateUser =
             UserModel(planName: subscriptionModel!.plan.id!.value);
         FirebaseServices.updateUser(updateUser);
+        FirebaseServices.getCurrentTexTriesSubscription().then((value) {
+          String textTries = value.replaceFirst(" Chances", "");
+          print('chances==>' + textTries);
+          int currentTextTries = int.parse(textTries);
+          currentTextTries = currentTextTries + 25;
+
+          // Add 25 textTries
+          TextTriesModel textTriesModel = TextTriesModel(
+            userId: PrefUtils.getId(),
+            timestamp: DateTime.now().toString(),
+            chances: '$currentTextTries Chances',
+          );
+          FirebaseServices.addTextTriesSubscription(textTriesModel);
+        });
+
         Fluttertoast.showToast(msg: 'Payment successfully completed');
         final bottomBarController = Get.find<CustomBottomBarController>();
         bottomBarController.selectedIndex.value = 3;

@@ -24,13 +24,13 @@ class QuestionSevenController extends GetxController {
   final q6 = Get.find<QuestionSixController>();
   var isButtonDisable = true.obs;
 
-  List getAvailableLocationList() {
-    List locationList = [];
-    for (var location in q5.availableLocationTextController) {
-      locationList.add(location.text);
-    }
-    return locationList;
-  }
+  // List getAvailableLocationList() {
+  //   List locationList = [];
+  //   for (var location in q5.availableLocationTextController) {
+  //     locationList.add(location.text);
+  //   }
+  //   return locationList;
+  // }
 
   Future<List> getWayAlbum() async {
     List wayAlbum = [];
@@ -90,6 +90,7 @@ class QuestionSevenController extends GetxController {
   void onTapContinue() async {
     ProgressDialogUtils.showProgressDialog();
     UserModel userModel = UserModel(
+      isAccountDeleted: false,
       isApproved: true,
       planName: '',
       id: PrefUtils.getId(),
@@ -101,7 +102,8 @@ class QuestionSevenController extends GetxController {
       dob: q3.selectedDate.value,
       interestList: q4.selectedInterestList,
       locationText: q5.locationTextController.text,
-      availableLocation: getAvailableLocationList(),
+      location: q5.locationLatLong.value,
+      availableLocation: q5.locationList,
       whatDoYouWant: q6.whatDoYouWantToFindOut.value,
       wayAlbum: imagesList.where((element) => element.isNotEmpty).toList(),
       lifeAlbum:
@@ -120,7 +122,7 @@ class QuestionSevenController extends GetxController {
       ProgressDialogUtils.hideProgressDialog();
       PrefUtils.setUserName(q1.nameController.text.trim());
       PrefUtils.setGender(q2.selectedGender.value);
-      PrefUtils.setAvailableLocation(getAvailableLocationList()[0]);
+      PrefUtils.setAvailableLocation(q5.locationList[0].locationName);
       AnalyticsService.signUp();
       Get.offAll(() => CustomBottomBar());
     }

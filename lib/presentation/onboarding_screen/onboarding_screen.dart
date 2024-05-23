@@ -212,7 +212,6 @@ class OnboardingScreen extends GetWidget<OnboardingController> {
 
   Future<void> _onTapContinueWithEmail() async {
     Get.toNamed(AppRoutes.signInScreen);
-    // await FirebaseAnalyticsService.loginButtonClickedEvent("7hfdydafkjadfkj");
   }
 
   /// Section Widget

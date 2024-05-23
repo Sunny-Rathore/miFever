@@ -32,7 +32,7 @@ class NotificationService {
 
 // initialize the plugin. app_icon needs to be a added as a drawable resource to the Android head project
   static const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      AndroidInitializationSettings('@mipmap/notification_icon');
 
   static const InitializationSettings initializationSettings =
       InitializationSettings(

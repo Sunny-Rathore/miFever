@@ -4,6 +4,7 @@ import 'package:mifever/core/app_export.dart';
 import 'package:mifever/data/models/thermometer_model/thermometer_model.dart';
 import 'package:mifever/data/sevices/firebase_services.dart';
 
+import '../../../data/models/like/like_model.dart';
 import '../../../widgets/thermometer_cold.dart';
 import '../../../widgets/thermometer_widget.dart';
 import '../../profile_screen/profile_screen.dart';
@@ -42,8 +43,17 @@ class NotificationItemWidget extends StatelessWidget {
           }
 
           return InkWell(
-            onTap: () {
-              Get.to(() => ProfileScreen(notificationItemModelObj.id!.value));
+            onTap: () async {
+              bool isAccountDeleted =
+                  await FirebaseServices.getIsAccountDeleted(
+                      notificationItemModelObj.id!.value);
+
+              bool isDeleted =
+                  await getIsDeleted(notificationItemModelObj.id!.value);
+              print(isDeleted);
+              if (!isDeleted && !isAccountDeleted) {
+                Get.to(() => ProfileScreen(notificationItemModelObj.id!.value));
+              }
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -117,4 +127,18 @@ class NotificationItemWidget extends StatelessWidget {
           );
         });
   }
+}
+
+Future<bool> getIsDeleted(String receiverId) async {
+  return await FirebaseServices.getAllMatchedDataByUserId(receiverId)
+      .then((value) {
+    if (value != null) {
+      LikeModel likeData = LikeModel();
+      likeData = value;
+      print("likeData=> ${likeData.isDeleted}");
+      return likeData.isDeleted ?? false;
+    } else {
+      return false;
+    }
+  });
 }

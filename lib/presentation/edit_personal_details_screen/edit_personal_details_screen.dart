@@ -85,6 +85,24 @@ class EditPersonalDetailsScreen
                       ),
                       SizedBox(height: 6.v),
                       _buildLocationField(controller.locationController),
+                      Row(
+                        children: [
+                          Obx(
+                            () => Checkbox(
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                side: BorderSide(color: Colors.grey),
+                                checkColor: Colors.white,
+                                activeColor: Colors.red,
+                                value: controller.isCurrentLocation.value,
+                                onChanged: (val) async {
+                                  PrefUtils.setIsCurrentLocation(val!);
+                                  controller.isCurrentLocation.value = val;
+                                }),
+                          ),
+                          Text('Is  this your current location')
+                        ],
+                      ),
                       SizedBox(height: 25.v),
                       Container(
                         width: double.maxFinite,
@@ -208,32 +226,33 @@ class EditPersonalDetailsScreen
                 }
               },
               onLongPressEnd: (val) async {
-                PermissionStatus status = await Permission.microphone.request();
-                if (status.isGranted) {
-                  int timerValue = controller.timerCount.value;
-                  print("timerValue::$timerValue");
-                  controller.isRecordingOn(false);
-                  controller.isRecording(false);
-                  controller.stopRecodeTimer();
+                // PermissionStatus status = await Permission.microphone.request();
+                // if (status.isGranted) {
+                int timerValue = controller.timerCount.value;
+                print("timerValue::$timerValue");
+                controller.isRecordingOn(false);
+                controller.isRecording(false);
+                controller.stopRecodeTimer();
 
-                  if (!controller.isVoiceCancel.value) {
-                    await VoiceRecorderController.stopRecording();
-                    //consol.log(VoiceRecorderController.recordingPath.value);
-                    if (timerValue > 0) {
-                      controller.recordedFilePath.value =
-                          VoiceRecorderController.recordingPath.value;
-                    }
+                if (!controller.isVoiceCancel.value) {
+                  await VoiceRecorderController.stopRecording();
+                  if (timerValue > 0) {
+                    controller.recordedFilePath.value =
+                        VoiceRecorderController.recordingPath.value;
                   }
-                } else if (status.isPermanentlyDenied) {
-                  openAppSettings();
                 }
                 controller.isVoiceCancel.value = false;
               },
               onLongPress: () async {
-                controller.isRecording(true);
-                await VoiceRecorderController.startRecording();
-                controller.isRecordingOn(true);
-                controller.startRecordTimer();
+                PermissionStatus status = await Permission.microphone.request();
+                if (status.isGranted) {
+                  controller.isRecording(true);
+                  await VoiceRecorderController.startRecording();
+                  controller.isRecordingOn(true);
+                  controller.startRecordTimer();
+                } else if (status.isPermanentlyDenied) {
+                  openAppSettings();
+                }
               },
               child: CustomIconButton(
                 decoration: IconButtonStyleHelper.fillRedA,
@@ -554,14 +573,7 @@ class EditPersonalDetailsScreen
         }
         return null;
       },
-      onChanged: (val) {
-        //   if (controller.emailController.text.isEmpty ||
-        //       controller.passwordController.text.isEmpty) {
-        //     controller.isButtonDisable.value = true;
-        //   } else {
-        //     controller.isButtonDisable.value = false;
-        //   }
-      },
+      onChanged: (val) {},
     );
   }
 

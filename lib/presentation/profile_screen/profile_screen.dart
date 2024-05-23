@@ -16,6 +16,7 @@ import 'package:mifever/widgets/app_bar/custom_app_bar.dart';
 import 'package:mifever/widgets/custom_icon_button.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
+import '../../data/models/notification/notification.dart';
 import '../../data/models/thermometer_model/thermometer_model.dart';
 import '../../data/sevices/firebase_analytics_service/firebase_analytics_service.dart';
 import '../../data/sevices/media_services/audio_services.dart';
@@ -41,223 +42,213 @@ class ProfileScreen extends GetWidget<ProfileController> {
     controller.addThermometer(id);
     controller.getLikeData(id);
     controller.checkIsMatched(id);
-    return WillPopScope(
-      onWillPop: () async {
-        final controller = Get.find<HomeController>();
-        controller.getThemometerValue(id);
-        return true;
-      },
-      child: SafeArea(
-        child: StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseServices.getUserById(id),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return SizedBox.shrink();
-              }
-              var data = snapshot.data;
-              UserModel user =
-                  UserModel.fromJson(data!.data() as Map<String, dynamic>);
+    controller.isLiked(id);
+    return SafeArea(
+      child: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseServices.getUserById(id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SizedBox.shrink();
+            }
+            var data = snapshot.data;
+            UserModel user =
+                UserModel.fromJson(data!.data() as Map<String, dynamic>);
 
-              controller.translate(user);
+            controller.translate(user);
 
-              return Scaffold(
-                  appBar: PreferredSize(
-                      preferredSize: Size(SizeUtils.width, 56.v),
-                      child: _buildAppBar(user)),
-                  body: SizedBox(
-                    width: SizeUtils.width,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.only(top: 24.v),
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 5.v),
-                        child: Column(
-                          children: [
-                            Align(
+            return Scaffold(
+                appBar: PreferredSize(
+                    preferredSize: Size(SizeUtils.width, 56.v),
+                    child: _buildAppBar(user)),
+                body: SizedBox(
+                  width: SizeUtils.width,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.only(top: 24.v),
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 5.v),
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 20.h),
+                              child: Obx(
+                                () => Row(
+                                  children: [
+                                    CustomOutlinedButton(
+                                      height: 36.v,
+                                      width: 135.h,
+                                      text: "lbl_way_album".tr,
+                                      buttonStyle: controller.isWayAlbum.value
+                                          ? CustomButtonStyles.fillRedATL18
+                                          : CustomButtonStyles.outlineGray,
+                                      buttonTextStyle: controller
+                                              .isWayAlbum.value
+                                          ? CustomTextStyles.titleSmallPrimary
+                                          : CustomTextStyles
+                                              .titleSmallGray60004,
+                                      onPressed: () {
+                                        controller.isWayAlbum.value = true;
+                                      },
+                                    ),
+                                    CustomOutlinedButton(
+                                      width: 135.h.h,
+                                      text: "lbl_life_album".tr,
+                                      buttonTextStyle: !controller
+                                              .isWayAlbum.value
+                                          ? CustomTextStyles.titleSmallPrimary
+                                          : CustomTextStyles
+                                              .titleSmallGray60004,
+                                      margin: EdgeInsets.only(left: 12.h),
+                                      buttonStyle: !controller.isWayAlbum.value
+                                          ? CustomButtonStyles.fillRedATL18
+                                          : CustomButtonStyles.outlineGray,
+                                      onPressed: () {
+                                        controller.isWayAlbum.value = false;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16.v),
+                          Obx(() => _buildCarouselSlider(
+                                controller.isWayAlbum.value
+                                    ? user.wayAlbum ?? []
+                                    : user.lifeAlbum ?? [],
+                              )),
+                          SizedBox(height: 16.v),
+                          Obx(
+                            () => SizedBox(
+                              height: 6.v,
+                              child: AnimatedSmoothIndicator(
+                                activeIndex: controller.sliderIndex.value,
+                                count: user.wayAlbum?.length ?? 0,
+                                axisDirection: Axis.horizontal,
+                                effect: ScrollingDotsEffect(
+                                  spacing: 4,
+                                  activeDotColor: theme.colorScheme.onPrimary
+                                      .withOpacity(1),
+                                  dotColor: appTheme.gray200,
+                                  dotHeight: 6.v,
+                                  dotWidth: 6.h,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 24.v),
+                          _buildVoiceRecording(user),
+                          _buildInterests(user),
+                          Obx(
+                            () => _buildQuestionAnswer(
+                              aboutMyFavorite: "lbl_here_for".tr,
+                              loremIpsumDolor: controller.isConverted.value
+                                  ? controller.convertedHereFor.value
+                                  : user.whatDoYouWant.toString().tr,
+                            ),
+                          ),
+                          _buildAvailableLocation(user),
+                          ...List.generate(9, (index) {
+                            List<AdditionalDetailsWidgetModel>
+                                additionalDetailsList =
+                                <AdditionalDetailsWidgetModel>[
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_height'.tr,
+                                key: 'height',
+                                value: user.additionalPersonalInfo?.height !=
+                                        null
+                                    ? '${user.additionalPersonalInfo?.height} cm'
+                                    : '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_horoscope'.tr,
+                                key: 'horoscope',
+                                value: user.additionalPersonalInfo?.horoscope ??
+                                    '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_smokingOrNonSmoking'.tr,
+                                key: 'smokingStatus',
+                                value: user.additionalPersonalInfo
+                                        ?.smokingStatus ??
+                                    '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_drinkerOrNonDrinker'.tr,
+                                key: 'drinkingStatus',
+                                value: user.additionalPersonalInfo
+                                        ?.drinkingStatus ??
+                                    '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_religion'.tr,
+                                key: 'religion',
+                                value:
+                                    user.additionalPersonalInfo?.religion ?? '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_maritalStatus'.tr,
+                                key: 'maritalStatus',
+                                value: user.additionalPersonalInfo
+                                        ?.maritalStatus ??
+                                    '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_children'.tr,
+                                key: 'children',
+                                value:
+                                    user.additionalPersonalInfo?.children ?? '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_naturalHairColor'.tr,
+                                key: 'naturalHairColor',
+                                value: user.additionalPersonalInfo
+                                        ?.naturalHairColor ??
+                                    '',
+                              ),
+                              AdditionalDetailsWidgetModel(
+                                label: 'lbl_musicpreference'.tr,
+                                key: 'musicPreference',
+                                value: user.additionalPersonalInfo
+                                        ?.musicPreference ??
+                                    '',
+                              ),
+                            ];
+                            return _buildFrame(
+                                onTap: () {},
+                                value: additionalDetailsList[index].value,
+                                key: additionalDetailsList[index].key,
+                                label: additionalDetailsList[index].label);
+                          }),
+                          _buildAboutMe(user),
+                          SizedBox(height: 20.h),
+                          Padding(
+                            padding: EdgeInsets.only(left: 20.h, top: 20.h),
+                            child: Align(
                               alignment: Alignment.centerLeft,
-                              child: Padding(
-                                padding: EdgeInsets.only(left: 20.h),
-                                child: Obx(
-                                  () => Row(
-                                    children: [
-                                      CustomOutlinedButton(
-                                        height: 36.v,
-                                        width: 135.h,
-                                        text: "lbl_way_album".tr,
-                                        buttonStyle: controller.isWayAlbum.value
-                                            ? CustomButtonStyles.fillRedATL18
-                                            : CustomButtonStyles.outlineGray,
-                                        buttonTextStyle: controller
-                                                .isWayAlbum.value
-                                            ? CustomTextStyles.titleSmallPrimary
-                                            : CustomTextStyles
-                                                .titleSmallGray60004,
-                                        onPressed: () {
-                                          controller.isWayAlbum.value = true;
-                                        },
-                                      ),
-                                      CustomOutlinedButton(
-                                        width: 135.h.h,
-                                        text: "lbl_life_album".tr,
-                                        buttonTextStyle: !controller
-                                                .isWayAlbum.value
-                                            ? CustomTextStyles.titleSmallPrimary
-                                            : CustomTextStyles
-                                                .titleSmallGray60004,
-                                        margin: EdgeInsets.only(left: 12.h),
-                                        buttonStyle: !controller
-                                                .isWayAlbum.value
-                                            ? CustomButtonStyles.fillRedATL18
-                                            : CustomButtonStyles.outlineGray,
-                                        onPressed: () {
-                                          controller.isWayAlbum.value = false;
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              child: Text(
+                                'lbl_about_me'.tr,
+                                style: CustomTextStyles
+                                    .titleMediumGray900ExtraBold,
                               ),
                             ),
-                            SizedBox(height: 16.v),
-                            Obx(() => _buildCarouselSlider(
-                                  controller.isWayAlbum.value
-                                      ? user.wayAlbum ?? []
-                                      : user.lifeAlbum ?? [],
-                                )),
-                            SizedBox(height: 16.v),
-                            Obx(
-                              () => SizedBox(
-                                height: 6.v,
-                                child: AnimatedSmoothIndicator(
-                                  activeIndex: controller.sliderIndex.value,
-                                  count: user.wayAlbum?.length ?? 0,
-                                  axisDirection: Axis.horizontal,
-                                  effect: ScrollingDotsEffect(
-                                    spacing: 4,
-                                    activeDotColor: theme.colorScheme.onPrimary
-                                        .withOpacity(1),
-                                    dotColor: appTheme.gray200,
-                                    dotHeight: 6.v,
-                                    dotWidth: 6.h,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 24.v),
-                            _buildVoiceRecording(user),
-                            _buildInterests(user),
-                            Obx(
-                              () => _buildQuestionAnswer(
-                                aboutMyFavorite: "lbl_here_for".tr,
-                                loremIpsumDolor: controller.isConverted.value
-                                    ? controller.convertedHereFor.value
-                                    : user.whatDoYouWant.toString().tr,
-                              ),
-                            ),
-                            _buildAvailableLocation(user),
-                            ...List.generate(9, (index) {
-                              List<AdditionalDetailsWidgetModel>
-                                  additionalDetailsList =
-                                  <AdditionalDetailsWidgetModel>[
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_height'.tr,
-                                  key: 'height',
-                                  value: user.additionalPersonalInfo?.height !=
-                                          null
-                                      ? '${user.additionalPersonalInfo?.height} cm'
-                                      : '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_horoscope'.tr,
-                                  key: 'horoscope',
-                                  value:
-                                      user.additionalPersonalInfo?.horoscope ??
-                                          '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_smokingOrNonSmoking'.tr,
-                                  key: 'smokingStatus',
-                                  value: user.additionalPersonalInfo
-                                          ?.smokingStatus ??
-                                      '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_drinkerOrNonDrinker'.tr,
-                                  key: 'drinkingStatus',
-                                  value: user.additionalPersonalInfo
-                                          ?.drinkingStatus ??
-                                      '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_religion'.tr,
-                                  key: 'religion',
-                                  value:
-                                      user.additionalPersonalInfo?.religion ??
-                                          '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_maritalStatus'.tr,
-                                  key: 'maritalStatus',
-                                  value: user.additionalPersonalInfo
-                                          ?.maritalStatus ??
-                                      '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_children'.tr,
-                                  key: 'children',
-                                  value:
-                                      user.additionalPersonalInfo?.children ??
-                                          '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_naturalHairColor'.tr,
-                                  key: 'naturalHairColor',
-                                  value: user.additionalPersonalInfo
-                                          ?.naturalHairColor ??
-                                      '',
-                                ),
-                                AdditionalDetailsWidgetModel(
-                                  label: 'lbl_musicpreference'.tr,
-                                  key: 'musicPreference',
-                                  value: user.additionalPersonalInfo
-                                          ?.musicPreference ??
-                                      '',
-                                ),
-                              ];
-                              return _buildFrame(
-                                  onTap: () {},
-                                  value: additionalDetailsList[index].value,
-                                  key: additionalDetailsList[index].key,
-                                  label: additionalDetailsList[index].label);
-                            }),
-                            _buildAboutMe(user),
-                            SizedBox(height: 20.h),
-                            Padding(
-                              padding: EdgeInsets.only(left: 20.h, top: 20.h),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'lbl_about_me'.tr,
-                                  style: CustomTextStyles
-                                      .titleMediumGray900ExtraBold,
-                                ),
-                              ),
-                            ),
-                            _buildAboutMe1(user),
-                            SizedBox(height: 120.h),
-                          ],
-                        ),
+                          ),
+                          _buildAboutMe1(user),
+                          SizedBox(height: 120.h),
+                        ],
                       ),
                     ),
                   ),
-                  bottomSheet: Obx(
-                    () => controller.isMatched.value
-                        ? SizedBox()
-                        : int.parse(controller.textTries.value) > 0
-                            ? _buildChat()
-                            : _buildUpgradePlan(),
-                  ));
-            }),
-      ),
+                ),
+                bottomSheet: Obx(
+                  () => controller.isMatched.value
+                      ? SizedBox()
+                      : int.parse(controller.textTries.value) > 0
+                          ? _buildChat()
+                          : _buildUpgradePlan(),
+                ));
+          }),
     );
   }
 
@@ -394,8 +385,6 @@ class ProfileScreen extends GetWidget<ProfileController> {
             leadingWidth: 40.h,
             leading: AppbarLeadingImage(
               onTap: () {
-                final controller = Get.find<HomeController>();
-                controller.getThemometerValue(id);
                 Get.back();
               },
               imagePath: ImageConstant.imgArrowLeft02SharpGray90024x24,
@@ -411,6 +400,45 @@ class ProfileScreen extends GetWidget<ProfileController> {
               margin: EdgeInsets.only(left: 12.h),
             ),
             actions: [
+              Obx(
+                () => Visibility(
+                  visible: controller.isLikedMe.value &&
+                      !(controller.likeData.value.isMatched ?? false),
+                  child: IconButton(
+                      onPressed: () async {
+                        ProgressDialogUtils.showProgressDialog();
+                        final homeController = Get.find<HomeController>();
+                        UserModel? currentUser =
+                            await FirebaseServices.getCurrentUser();
+                        int likeCount = await FirebaseServices.getTodaysLike();
+                        if (currentUser!.planName!.isNotEmpty &&
+                            likeCount > 100) {
+                          Fluttertoast.showToast(
+                              msg: 'lbl_upgrade_your_plan'.tr);
+                          Get.toNamed(AppRoutes.subscriptionPlansScreen,
+                              parameters: {'index': '0'});
+                        } else {
+                          homeController.onSwipe(
+                              token: user.token!,
+                              type: NotificationType.Like.name,
+                              notificationTo: user.id!);
+                          FirebaseServices.addLike(receiverId: user.id!);
+                          homeController.sendNotification(
+                              user: user, type: NotificationType.Like.name);
+
+                          Fluttertoast.showToast(
+                              msg: 'Liked', gravity: ToastGravity.TOP_RIGHT);
+                          AnalyticsService.like(user.name ?? '');
+                        }
+                        controller.isLiked(id);
+                        ProgressDialogUtils.showProgressDialog();
+                      },
+                      icon: Icon(
+                        Icons.favorite,
+                        color: appTheme.redA200,
+                      )),
+                ),
+              ),
               PopupMenuButton(
                 itemBuilder: (context) {
                   return [
@@ -634,49 +662,6 @@ class ProfileScreen extends GetWidget<ProfileController> {
                         );
                       },
                     );
-
-                    // Get.defaultDialog(
-                    //   contentPadding:
-                    //       EdgeInsets.symmetric(horizontal: 10.h, vertical: 10),
-                    //   title: 'lbl_are_you_sure_want_to_unmatch'.tr +
-                    //       ' ${user.name} ?',
-                    //   titleStyle: TextStyle(fontSize: 16.fSize),
-                    //   middleText: '',
-                    //   actions: <Widget>[
-                    //     TextButton(
-                    //       style: TextButton.styleFrom(
-                    //           padding: EdgeInsets.only(right: 50.v),
-                    //           shape: RoundedRectangleBorder()),
-                    //       onPressed: () {
-                    //         Get.back();
-                    //       },
-                    //       child: Text(
-                    //         'No',
-                    //         style: TextStyle(
-                    //             color: appTheme.redA200, fontSize: 15.fSize),
-                    //       ),
-                    //     ),
-                    //     TextButton(
-                    //       style: TextButton.styleFrom(
-                    //           minimumSize: Size(100.v, 30.v),
-                    //           backgroundColor: appTheme.redA200),
-                    //       onPressed: () async {
-                    //         ProgressDialogUtils.showProgressDialog();
-                    //         await FirebaseServices.doUnMatch(id);
-                    //         ProgressDialogUtils.hideProgressDialog();
-                    //         final controller =
-                    //             Get.find<CustomBottomBarController>();
-                    //         controller.selectedIndex.value = 2;
-                    //         Get.off(() => CustomBottomBar());
-                    //         // Get.back();
-                    //       },
-                    //       child: Text(
-                    //         'Yes',
-                    //       ),
-                    //     ),
-                    //   ],
-
-                    // );
                   }
                 },
               )
@@ -786,12 +771,17 @@ class ProfileScreen extends GetWidget<ProfileController> {
                               padding: EdgeInsets.only(left: 12.h),
                               child: CustomIconButton(
                                 onTap: () {
-                                  controller.progress.value = 0.0;
-                                  controller.isPlaying.value = true;
-                                  VoiceRecorderController.playAudio(
-                                          user.nameAudio ?? '')
-                                      .then((value) => VoiceRecorderController
-                                          .audioPosition.value = 0);
+                                  if (isHide()) {
+                                    Fluttertoast.showToast(
+                                        msg: 'lbl_error_subscription'.tr);
+                                  } else {
+                                    controller.progress.value = 0.0;
+                                    controller.isPlaying.value = true;
+                                    VoiceRecorderController.playAudio(
+                                            user.nameAudio ?? '')
+                                        .then((value) => VoiceRecorderController
+                                            .audioPosition.value = 0);
+                                  }
                                 },
                                 height: 30.adaptSize,
                                 width: 30.adaptSize,
@@ -820,7 +810,7 @@ class ProfileScreen extends GetWidget<ProfileController> {
             ],
           ),
         ),
-        _showSubscriptionBadge(padding: 30.v)
+        //_showSubscriptionBadge(padding: 30.v)
       ],
     );
   }

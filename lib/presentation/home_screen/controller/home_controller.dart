@@ -1,5 +1,6 @@
 // ignore_for_file: sdk_version_since
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import 'package:mifever/data/sevices/firebase_services.dart';
 import 'package:mifever/presentation/home_screen/models/home_model.dart';
 
 import '../../../data/models/filter/filter_model.dart';
+import '../../../data/models/thermometer_model/thermometer_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/sevices/firebase_messageing_service.dart';
 import '../../../data/sevices/google_places_services.dart';
@@ -23,9 +25,13 @@ class HomeController extends GetxController {
 
   RxInt userLength = 0.obs;
 
+  RxInt profileIndex = 0.obs;
+
   RxBool isWantToDislike = false.obs;
 
   Rx<GeoPoint> filteredLocation = GeoPoint(0.0, 0.0).obs;
+
+  var receiverId = ''.obs;
 
   void onSwipe(
       {required String type,
@@ -60,7 +66,7 @@ class HomeController extends GetxController {
               maxAge: filter?.ageRangeEnd.round() ?? 0,
               maxDistance: filter?.distance ?? 960,
               gender: filter?.interestedIn ?? 'Female',
-              currentUserLocation: GeoPoint(
+              searchLocation: GeoPoint(
                   filter?.lat ?? 20.4481338, filter?.lng ?? 82.7462439),
               filter: filter!)
           .then((value) {
@@ -77,7 +83,7 @@ class HomeController extends GetxController {
       required int maxAge,
       required double maxDistance,
       required String gender,
-      required GeoPoint currentUserLocation,
+      required GeoPoint searchLocation,
       required PreferenceFilter filter}) async {
     userLength.value = 0;
     thermoValue.value = 0;
@@ -86,27 +92,35 @@ class HomeController extends GetxController {
         .collection('users')
         .where('id', isNotEqualTo: PrefUtils.getId())
         .where('isProfileComplete', isEqualTo: true)
+        .where('isAccountDeleted', isEqualTo: false)
         .get();
+
     List<UserModel> users = [];
     List<String> _disLikeUsersId = [];
+    List<String> _blockedUser = [];
+    var matchedUser = [];
+    List<String> _likeUsersId = [];
+
+    _blockedUser = await FirebaseServices.getBlockedByMe();
+    _blockedUser = await FirebaseServices.getBlockedMe();
+
     List<NotificationModel> _dislikeNotifications =
         await FirebaseServices.allDisLikedUserByMe();
     for (var user in _dislikeNotifications) {
       _disLikeUsersId.add(user.notificationTo);
     }
-    List<String> _likeUsersId = [];
     List<NotificationModel> _likeNotifications =
         await FirebaseServices.allLikedUserByMe();
     for (var user in _likeNotifications) {
       _likeUsersId.add(user.notificationTo);
     }
-    var matchedUser = [];
     matchedUser = await FirebaseServices.getAllMatchUserIds();
     for (var doc in querySnapshot.docs) {
       Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
       UserModel user = UserModel.fromJson(userData);
       users.sort((a, b) => b.planName!.length.compareTo(a.planName!.length));
-      if (!matchedUser.contains(user.id) &&
+      if (!_blockedUser.contains(user.id) &&
+          !matchedUser.contains(user.id) &&
           !_likeUsersId.contains(user.id) &&
           !_disLikeUsersId.contains(user.id) &&
           (calculateAgeFromString(user.dob!) >= minAge) &&
@@ -146,63 +160,41 @@ class HomeController extends GetxController {
           (filter.musicPreference == "" ||
               filter.musicPreference ==
                   user.additionalPersonalInfo!.musicPreference)) {
-        GeoPoint userLocation = user.location!;
+        var currentLocationDistance = calculateDistance(
+            user.isCurrentLocation!
+                ? user.location!
+                : user.currentLocationLatLng!,
+            searchLocation);
         var distances = [];
-        var distance = calculateDistance(userLocation, currentUserLocation);
-        distances.add(distance);
-        for (var index = 0; index < user.availableLocation!.length; index++) {
-          GeoPoint availableLocationLatLng =
-              await GooglePlacesApiServices.getLatLongFromAddress(
-                  user.availableLocation![index]);
+        distances.add(currentLocationDistance);
+
+        for (var location in user.availableLocation!) {
           var locationDistance =
-              calculateDistance(availableLocationLatLng, currentUserLocation);
+              calculateDistance(location.latLng, searchLocation);
           distances.add(locationDistance);
         }
-
-        if (
-            // !_likeUsersId.contains(user.id) &&
-            //         !_disLikeUsersId.contains(user.id) &&
-            //         (calculateAgeFromString(user.dob!) >= minAge) &&
-            //         (calculateAgeFromString(user.dob!) <= maxAge) &&
-            //         (user.gender == gender) &&
-            distances.any((number) => number <= maxDistance)
-            // distance <= maxDistance
-            ) {
+        print("distances$distances");
+        if (distances.any((number) => number <= maxDistance)) {
           users.add(UserModel.fromJson(userData));
         }
       }
     }
     print('object2');
-    // querySnapshot.docs.forEach((doc) async {
-    //   Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
-    //   UserModel user = UserModel.fromJson(userData);
-    //   GeoPoint userLocation = user.location!;
-    //   var distances = [];
-    //   var distance = calculateDistance(userLocation, currentUserLocation);
-    //   // distances.add(distance);
-    //   // for (var index = 0; index < user.availableLocation!.length; index++) {
-    //   //   GeoPoint availableLocationLatLng =
-    //   //       await GooglePlacesApiServices.getLatLongFromAddress(
-    //   //           user.availableLocation![index]);
-    //   //   var locationDistance =
-    //   //       calculateDistance(availableLocationLatLng, currentUserLocation);
-    //   //   distances.add(locationDistance);
-    //   // }
-
-    //   if (!_likeUsersId.contains(user.id) &&
-    //       !_disLikeUsersId.contains(user.id) &&
-    //       (calculateAgeFromString(user.dob!) >= minAge) &&
-    //       (calculateAgeFromString(user.dob!) <= maxAge) &&
-    //       (user.gender == gender) &&
-    //       // distances.any((number) => number <= maxDistance)(
-    //       distance <= maxDistance) {
-    //     users.add(UserModel.fromJson(userData));
-    //   }
-    // });
 
     userList.clear();
     userList.addAll(users);
     userLength.value = userList.length;
+
+    if (userList.length > 0) {
+      receiverId.value = userList[0].id ?? '';
+      // final bottomBarController = Get.find<CustomBottomBarController>();
+      // if (bottomBarController.selectedIndex.value == 0) {
+      addThermometer(userList[0].id ?? '');
+      // } else {
+      //   stopTimer();
+      // }
+    }
+
     return users;
   }
 
@@ -228,13 +220,56 @@ class HomeController extends GetxController {
     return distance;
   }
 
-  void getThemometerValue(String receiverId) async {
-    await FirebaseServices.getThermometerValue(receiverId)
-        .then((thermometerModel) {
-      if (thermometerModel != null) {
-        thermoValue.value = thermometerModel.percentageValue;
+  late Timer _timer;
+  RxInt _elapsedSeconds = 0.obs;
+  void addThermometer(String userId) {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      _elapsedSeconds.value++;
+      // print(_elapsedSeconds.value);
+      if (_elapsedSeconds.value == 15) {
+        addThemometerValue(value: 20, id: userId);
+      } else if (_elapsedSeconds.value == 30) {
+        addThemometerValue(value: 30, id: userId);
+      } else if (_elapsedSeconds.value == 60) {
+        addThemometerValue(value: 50, id: userId);
+      } else if (_elapsedSeconds.value > 60) {
+        stopTimer();
       }
     });
+  }
+
+  void stopTimer() {
+    _timer.cancel();
+    _elapsedSeconds.value = 0;
+  }
+
+  void addThemometerValue({required int value, required String id}) async {
+    var isInBlocked = await FirebaseServices.isInBlockTable(id);
+    if (!isInBlocked) {
+      print('add');
+      FirebaseServices.getThermometerValue(id).then((thermometerModel) async {
+        var userIds = [];
+        var currentUserId = PrefUtils.getId();
+        var thermometerValue = 0;
+        if (thermometerModel != null) {
+          thermometerValue = thermometerModel.percentageValue;
+          if (!thermometerModel.userIds!.contains(currentUserId)) {
+            userIds.add(currentUserId);
+          } else {
+            userIds.addAll(thermometerModel.userIds ?? []);
+          }
+        } else {
+          userIds.add(currentUserId);
+        }
+        if (thermometerValue <= value) {
+          await FirebaseServices.addThermometerValue(ThermometerModel(
+              timestamp: DateTime.now().toString(),
+              roomId: FirebaseServices.createChatRoomId(id),
+              percentageValue: value,
+              userIds: userIds));
+        }
+      });
+    }
   }
 
   getUserFilter() {
@@ -259,6 +294,7 @@ class HomeController extends GetxController {
     // AnalyticsService.initMixpanel();
     getUser();
     getUserFilter();
+    FirebaseServices.getTodaysLike();
   }
 
   List<String> addresses = [
@@ -266,4 +302,10 @@ class HomeController extends GetxController {
     '1 Infinite Loop, Cupertino, CA',
     '1 Microsoft Way, Redmond, WA',
   ];
+
+  @override
+  void onClose() {
+    stopTimer();
+    super.onClose();
+  }
 }

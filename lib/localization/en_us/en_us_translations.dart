@@ -591,6 +591,8 @@ final Map<String, String> enUs = {
   'translating_to_your': 'Translating to your preferred language.',
   'lbl_are_you_sure_want_to_report': 'Are you sure want to report',
   'lbl_are_you_sure_want_to_unmatch': 'Are you sure want to unmatch',
+  'lbl_are_you_sure_want_to_delete_account':
+      'Are you sure want to delete account ?',
   'lbl_people_whom': 'People whom you have matched with will appear here.',
   'lbl_height': 'Height',
   'lbl_horoscope': 'Horoscope',
@@ -659,5 +661,10 @@ final Map<String, String> enUs = {
   'err_msg_please_enter_valid_height': 'Please enter valid height',
   'lbl_advance_filters': 'Advanced Filters',
   'lbl_due_to_policy_violation':
-      'Due to policy violation you have been blocked. Please email at contact@mifever.com for support.'
+      'Due to policy violation you have been blocked. Please email at contact@mifever.com for support.',
+  'lbl_error_subscription':
+      'Upgrade to unlock premium feature and enjoy uninterrupted audio steaming',
+  'lbl_no_notifications': 'No Notifications at this moment.',
+  'lbl_delete_account': "Delete account",
+  'lbl_upgrade_your_plan': 'Upgrade your plan'
 };

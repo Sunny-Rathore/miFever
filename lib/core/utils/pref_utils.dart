@@ -10,7 +10,6 @@ class PrefUtils {
   static SharedPreferences? _sharedPreferences;
 
   PrefUtils() {
-    // init();
     SharedPreferences.getInstance().then((value) {
       _sharedPreferences = value;
     });
@@ -113,6 +112,14 @@ class PrefUtils {
 
   static bool getIsNotificationON() {
     return _sharedPreferences?.getBool('isNotificationOn') ?? true;
+  }
+
+  static Future<void> setIsCurrentLocation(bool value) {
+    return _sharedPreferences!.setBool('isCurrentLocation', value);
+  }
+
+  static bool getIsCurrentLocation() {
+    return _sharedPreferences?.getBool('isCurrentLocation') ?? true;
   }
 
   static Future<void> setIsSplash(bool value) {

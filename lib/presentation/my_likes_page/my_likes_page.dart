@@ -155,9 +155,8 @@ class MyLikesPage extends StatelessWidget {
                 notifications[index].notificationTo),
             builder: (context, usersSnapshot) {
               if (usersSnapshot.connectionState == ConnectionState.waiting) {
-                return SkeletonListView();
+                return SizedBox.shrink();
               }
-
               UserModel _user = UserModel();
               DocumentSnapshot<Object?> data = usersSnapshot.data!;
               _user = UserModel.fromJson(data.data() as Map<String, dynamic>);

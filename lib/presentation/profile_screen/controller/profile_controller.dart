@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:mifever/core/app_export.dart';
 import 'package:mifever/data/models/like/like_model.dart';
-import 'package:mifever/data/models/thermometer_model/thermometer_model.dart';
 import 'package:mifever/data/sevices/firebase_services.dart';
 import 'package:mifever/presentation/profile_screen/models/profile_model.dart';
 import 'package:translator_plus/translator_plus.dart';
@@ -21,6 +20,7 @@ class ProfileController extends GetxController {
   RxBool isPlaying = false.obs;
   RxString planName = ''.obs;
   RxString textTries = '0'.obs;
+  RxBool isLikedMe = false.obs;
 
   List<TranslationModel> translationList = <TranslationModel>[].obs;
 
@@ -91,46 +91,46 @@ class ProfileController extends GetxController {
         }
       }
       _elapsedSeconds.value++;
-      print(_elapsedSeconds.value);
+      //print(_elapsedSeconds.value);
 
-      if (_elapsedSeconds.value == 15) {
-        addThemometerValue(value: 20, id: userId);
-      } else if (_elapsedSeconds.value == 30) {
-        addThemometerValue(value: 30, id: userId);
-      } else if (_elapsedSeconds.value == 60) {
-        addThemometerValue(value: 50, id: userId);
-      }
+      // if (_elapsedSeconds.value == 15) {
+      //   addThemometerValue(value: 20, id: userId);
+      // } else if (_elapsedSeconds.value == 30) {
+      //   addThemometerValue(value: 30, id: userId);
+      // } else if (_elapsedSeconds.value == 60) {
+      //   addThemometerValue(value: 50, id: userId);
+      // }
     });
   }
 
-  void addThemometerValue({required int value, required String id}) async {
-    var isInBlocked = await FirebaseServices.isInBlockTable(id);
-    if (!isInBlocked) {
-      print('add');
-      FirebaseServices.getThermometerValue(id).then((thermometerModel) async {
-        var userIds = [];
-        var currentUserId = PrefUtils.getId();
-        var thermometerValue = 0;
-        if (thermometerModel != null) {
-          thermometerValue = thermometerModel.percentageValue;
-          if (!thermometerModel.userIds!.contains(currentUserId)) {
-            userIds.add(currentUserId);
-          } else {
-            userIds.addAll(thermometerModel.userIds ?? []);
-          }
-        } else {
-          userIds.add(currentUserId);
-        }
-        if (thermometerValue <= value) {
-          await FirebaseServices.addThermometerValue(ThermometerModel(
-              timestamp: DateTime.now().toString(),
-              roomId: FirebaseServices.createChatRoomId(id),
-              percentageValue: value,
-              userIds: userIds));
-        }
-      });
-    }
-  }
+  // void addThemometerValue({required int value, required String id}) async {
+  //   var isInBlocked = await FirebaseServices.isInBlockTable(id);
+  //   if (!isInBlocked) {
+  //     print('add');
+  //     FirebaseServices.getThermometerValue(id).then((thermometerModel) async {
+  //       var userIds = [];
+  //       var currentUserId = PrefUtils.getId();
+  //       var thermometerValue = 0;
+  //       if (thermometerModel != null) {
+  //         thermometerValue = thermometerModel.percentageValue;
+  //         if (!thermometerModel.userIds!.contains(currentUserId)) {
+  //           userIds.add(currentUserId);
+  //         } else {
+  //           userIds.addAll(thermometerModel.userIds ?? []);
+  //         }
+  //       } else {
+  //         userIds.add(currentUserId);
+  //       }
+  //       if (thermometerValue <= value) {
+  //         await FirebaseServices.addThermometerValue(ThermometerModel(
+  //             timestamp: DateTime.now().toString(),
+  //             roomId: FirebaseServices.createChatRoomId(id),
+  //             percentageValue: value,
+  //             userIds: userIds));
+  //       }
+  //     });
+  //   }
+  // }
 
   void addNotification(String id) async {
     NotificationModel notificationModel = NotificationModel(
@@ -154,6 +154,11 @@ class ProfileController extends GetxController {
         print("likeData=> ${likeData.value.isDeleted}");
       }
     });
+  }
+
+  void isLiked(String otherUserId) async {
+    FirebaseServices.isLikedMe(otherUserId)
+        .then((value) => isLikedMe.value = value);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mifever/core/app_export.dart';
 import 'package:mifever/presentation/chat_screen/chat_screen.dart';
 
+import '../../../data/sevices/firebase_services.dart';
 import '../../chat_screen/widgets/image_message_widget.dart';
 import '../controller/my_chats_one_controller.dart';
 import '../models/userprofile1_item_model.dart';
@@ -22,7 +23,7 @@ class Userprofile1ItemWidget extends StatelessWidget {
         controller.selectedUser.add(userprofile1ItemModelObj.id!.value);
         controller.isSelected.value = true;
       },
-      onTap: () {
+      onTap: () async {
         controller.clearSearchBar();
         if (controller.isSelected.value) {
           if (controller.selectedUser
@@ -32,7 +33,11 @@ class Userprofile1ItemWidget extends StatelessWidget {
             controller.selectedUser.add(userprofile1ItemModelObj.id!.value);
           }
         } else {
-          Get.to(() => ChatScreen(userprofile1ItemModelObj.id!.value));
+          bool isAccountDeleted = await FirebaseServices.getIsAccountDeleted(
+              userprofile1ItemModelObj.id!.value);
+          if (!isAccountDeleted) {
+            Get.to(() => ChatScreen(userprofile1ItemModelObj.id!.value));
+          }
         }
       },
       child: Obx(

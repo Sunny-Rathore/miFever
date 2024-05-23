@@ -215,6 +215,8 @@ class QuestionOneScreen extends GetWidget<QuestionOneController> {
                   await VoiceRecorderController.startRecording();
                   controller.isRecordingOn(true);
                   controller.startRecordTimer();
+                } else if (status.isPermanentlyDenied) {
+                  openAppSettings();
                 }
               },
               child: CustomIconButton(

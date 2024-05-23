@@ -34,11 +34,8 @@ class EditAdditionalDetailsPage extends StatelessWidget {
     return Scaffold(
       appBar: _buildAppBar(),
       body: SizedBox(
-        width: SizeUtils.width,
+        //width: SizeUtils.width,
         child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
           child: Form(
             key: _formKey,
             child: Container(
@@ -123,6 +120,17 @@ class EditAdditionalDetailsPage extends StatelessWidget {
               children: [
                 InkWell(
                   onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    if (controller.heightInFeetController.text.isNotEmpty &&
+                        controller.heightInInchController.text.isNotEmpty) {
+                      double cm = convertFeetAndInchesToCm(
+                          int.parse(controller.heightInFeetController.text),
+                          int.parse(controller.heightInInchController.text));
+                      controller.heightController.text = cm.round().toString();
+                    } else {
+                      Fluttertoast.showToast(
+                          msg: 'err_msg_please_enter_valid_height'.tr);
+                    }
                     controller.selectedHeightUnit.value = 'CM';
                   },
                   child: Obx(
@@ -147,6 +155,7 @@ class EditAdditionalDetailsPage extends StatelessWidget {
                 ),
                 InkWell(
                   onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
                     if (controller.heightController.text.isNotEmpty) {
                       convertCmToFeetAndInches(
                           double.parse(controller.heightController.text));
@@ -675,7 +684,6 @@ class EditAdditionalDetailsPage extends StatelessWidget {
     inches %= 12;
     controller.heightInFeetController.text = feet.floor().toString();
     controller.heightInInchController.text = inches.round().toString();
-
     print('${cm}cm is ${feet.floor()} feet and ${inches.round()} inches.');
   }
 
@@ -688,14 +696,19 @@ class EditAdditionalDetailsPage extends StatelessWidget {
   }
 
   void save(String value) async {
-    ProgressDialogUtils.showProgressDialog();
-    var newMap = additionalPersonalInfo.toJson();
-    newMap[mapKey] = value;
-    UserModel userModel = UserModel(
-        additionalPersonalInfo: AdditionalPersonalInfo.fromJson(newMap));
-    await FirebaseServices.updateUser(userModel);
-    ProgressDialogUtils.hideProgressDialog();
-    Fluttertoast.showToast(msg: 'Success');
-    Get.back();
+    if (mapKey == 'height' &&
+        (double.parse(value) < 100 || double.parse(value) > 300)) {
+      Fluttertoast.showToast(msg: 'err_msg_please_enter_valid_height'.tr);
+    } else {
+      ProgressDialogUtils.showProgressDialog();
+      var newMap = additionalPersonalInfo.toJson();
+      newMap[mapKey] = value;
+      UserModel userModel = UserModel(
+          additionalPersonalInfo: AdditionalPersonalInfo.fromJson(newMap));
+      await FirebaseServices.updateUser(userModel);
+      ProgressDialogUtils.hideProgressDialog();
+      Fluttertoast.showToast(msg: 'Success');
+      Get.back();
+    }
   }
 }

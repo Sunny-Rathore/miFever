@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_export.dart';
+import '../../../data/sevices/helper_services.dart';
 import '../../video_player/video_player.dart';
 import '../models/chat_model.dart';
 
@@ -33,42 +34,55 @@ class _VideoMessageWidgetState extends State<VideoMessageWidget> {
             : Alignment.centerLeft,
         child: widget.chat.thumbnailUrl!.isEmpty
             ? loadingWidget()
-            : Stack(
-                alignment: Alignment.center,
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
+                  Stack(
                     alignment: Alignment.center,
-                    width: SizeUtils.width * 0.4,
-                    height: 160.adaptSize,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                          fit: BoxFit.cover,
-                          image: NetworkImage(widget.chat.thumbnailUrl ?? '')),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: widget.chat.senderId == PrefUtils.getId()
-                              ? appTheme.redA200
-                              : appTheme.red50,
-                          width: 1.v),
-                      // borderRadius: BorderRadius.circular(10.fSize),
+                    children: [
+                      Container(
+                        alignment: Alignment.center,
+                        width: SizeUtils.width * 0.4,
+                        height: 160.adaptSize,
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                              fit: BoxFit.cover,
+                              image:
+                                  NetworkImage(widget.chat.thumbnailUrl ?? '')),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: widget.chat.senderId == PrefUtils.getId()
+                                  ? appTheme.redA200
+                                  : appTheme.red50,
+                              width: 1.v),
+                          // borderRadius: BorderRadius.circular(10.fSize),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Get.to(() => VideoPlayerView(
+                                url: widget.chat.url!,
+                              ));
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(5.v),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle, color: appTheme.redA200),
+                          child: Icon(
+                            Icons.play_arrow,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(left: 5.h),
+                    child: Text(
+                      Helpers.formatTime(widget.chat.timestamp ?? ''),
+                      style: CustomTextStyles.bodySmall11,
                     ),
                   ),
-                  InkWell(
-                    onTap: () {
-                      Get.to(() => VideoPlayerView(
-                            url: widget.chat.url!,
-                          ));
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(5.v),
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle, color: appTheme.redA200),
-                      child: Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
                 ],
               )
         //: loadingWidget(),

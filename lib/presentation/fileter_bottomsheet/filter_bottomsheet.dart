@@ -844,7 +844,7 @@ class FilterBottomsheet extends StatelessWidget {
     return CustomTextFormField(
       readOnly: true,
       controller: controller.locationController,
-      hintText: "msg_select_your_country".tr,
+      hintText: "lbl_enter_location".tr,
       hintStyle: CustomTextStyles.bodySmall12,
       prefix: Container(
         margin: EdgeInsets.fromLTRB(12.h, 12.v, 8.h, 12.v),
@@ -860,7 +860,7 @@ class FilterBottomsheet extends StatelessWidget {
       textInputType: TextInputType.name,
       validator: (value) {
         if (value!.trim().isEmpty) {
-          return "msg_select_your_country".tr;
+          return "lbl_enter_location".tr;
         }
         return null;
       },
@@ -875,13 +875,8 @@ class FilterBottomsheet extends StatelessWidget {
             value.result.geometry!.location.lat,
             value.result.geometry!.location.lng,
           );
-          value.result.addressComponents.forEach((component) {
-            if (component.types.contains("country")) {
-              // print("Country Name:${component.longName}");
-
-              //controller.country.value = '${component.longName}';
-            }
-          });
+          print(
+              'searchLatLng: lat=>${controller.locationLatLong.value.latitude} lan=>${controller.locationLatLong.value.longitude}');
         });
       },
     );

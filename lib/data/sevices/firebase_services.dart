@@ -74,18 +74,20 @@ class FirebaseServices {
         FirebaseServices.getCurrentUser().then((value) {
           PrefUtils.setGender(value?.gender ?? '');
           PrefUtils.setUserEmail(value?.email ?? '');
-          PrefUtils.setAvailableLocation(value?.availableLocation?[0] ?? '');
-          AnalyticsService.initMixpanel();
+          PrefUtils.setAvailableLocation(
+              value?.availableLocation?[0].locationName ?? '');
         });
         ProgressDialogUtils.hideProgressDialog();
         UserModel userModel = UserModel(
           isNotificationOn: true,
           token: await FirebaseMessagingService.generateToken(),
         );
-
+        AnalyticsService.initMixpanel();
+        AnalyticsService.login();
         await FirebaseServices.updateUser(userModel);
         return true;
       }
+
       return false;
     }).onError((error, stackTrace) {
       ProgressDialogUtils.hideProgressDialog();
@@ -135,8 +137,7 @@ class FirebaseServices {
                 PrefUtils.setGender(value?.gender ?? '');
                 PrefUtils.setUserEmail(value?.email ?? '');
                 PrefUtils.setAvailableLocation(
-                    value?.availableLocation?[0] ?? '');
-                AnalyticsService.initMixpanel();
+                    value?.availableLocation?[0].locationName ?? '');
               });
               PrefUtils.setUserName(user.name ?? '').then((value) {});
               UserModel userModel = UserModel(
@@ -152,6 +153,8 @@ class FirebaseServices {
           }
         });
       }
+      AnalyticsService.initMixpanel();
+      AnalyticsService.login();
       return user;
     } catch (e) {
       log("Error during Google sign in:", error: e);
@@ -764,6 +767,49 @@ class FirebaseServices {
     }
   }
 
+  static Future<List<String>> getBlockedByMe() async {
+    try {
+      return await _firestore
+          .collection('blockedUsers')
+          .where('blockBy', isEqualTo: PrefUtils.getId())
+          // .where('blockTo', isEqualTo: PrefUtils.getId())
+          .get()
+          .then((value) {
+        List<String> blockList = <String>[];
+        blockList.clear();
+        var docs = value.docs;
+        blockList =
+            docs.map((e) => BlockModel.fromJson(e.data()).blockTo).toList();
+        print('Blocked by me $blockList ');
+        return blockList;
+      });
+    } catch (e) {
+      log('error during in block users', error: e);
+      return <String>[];
+    }
+  }
+
+  static Future<List<String>> getBlockedMe() async {
+    try {
+      return await _firestore
+          .collection('blockedUsers')
+          .where('blockTo', isEqualTo: PrefUtils.getId())
+          .get()
+          .then((value) {
+        List<String> blockList = <String>[];
+        blockList.clear();
+        var docs = value.docs;
+        blockList =
+            docs.map((e) => BlockModel.fromJson(e.data()).blockBy).toList();
+        print('Blocked Me $blockList');
+        return blockList;
+      });
+    } catch (e) {
+      log('error during in block users', error: e);
+      return <String>[];
+    }
+  }
+
   static getAllBlockedUser() {
     return _firestore.collection('blockedUsers').snapshots();
   }
@@ -903,14 +949,13 @@ class FirebaseServices {
 /*------Get Themometer Value---------*/
   static Future<ThermometerModel?> getThermometerValue(
       String receiverId) async {
+    print('receiverId$receiverId');
     try {
       return await _firestore
           .collection('thermometer')
           .doc(createChatRoomId(receiverId))
           .get()
           .then((value) {
-        print('value');
-        print(value.data());
         ThermometerModel thermometerModel =
             ThermometerModel.fromJson(value.data() as Map<String, dynamic>);
         return thermometerModel;
@@ -939,15 +984,6 @@ class FirebaseServices {
       log('Error during add Subscription', error: e);
     }
   }
-/*------Add TextTries---------*/
-
-  static addTextTriesSubscription(TextTriesModel textTriesModel) async {
-    try {
-      await _firestore.collection('textTries').add(textTriesModel.toJson());
-    } catch (e) {
-      log('Error during add textTries Subscription', error: e);
-    }
-  }
 
   static getSubscription() {
     return _firestore
@@ -974,6 +1010,31 @@ class FirebaseServices {
     } else {
       print('plan==> no plan');
       return '';
+    }
+  }
+
+  /*------Add TextTries---------*/
+
+  static addTextTriesSubscription(TextTriesModel textTriesModel) async {
+    try {
+      await _firestore
+          .collection('textTries')
+          .doc(textTriesModel.userId)
+          .set(textTriesModel.toJson());
+    } catch (e) {
+      log('Error during add textTries Subscription', error: e);
+    }
+  }
+
+  /*------update TextTries---------*/
+  static updateTextTriesSubscription(TextTriesModel textTriesModel) async {
+    try {
+      await _firestore
+          .collection('textTries')
+          .doc(textTriesModel.userId)
+          .set(textTriesModel.toJson());
+    } catch (e) {
+      log('Error during add textTries Subscription', error: e);
     }
   }
 
@@ -1315,5 +1376,92 @@ class FirebaseServices {
         .collection('laws')
         .where('country', isEqualTo: country)
         .snapshots();
+  }
+
+  static getAllNotifications() {
+    return _firestore
+        .collection('notifications')
+        .where('notificationTo', isEqualTo: PrefUtils.getId())
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  static Future<void> deleteAccount() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      try {
+        await user.delete();
+        print("User account deleted successfully.");
+      } catch (e) {
+        log("Error deleting user account:", error: e);
+      }
+    } else {
+      print("No user signed in.");
+    }
+  }
+
+  static Future<int> getTodaysLike() async {
+    try {
+      String todayDate = DateTime.now().toString().substring(0, 10);
+      return _firestore
+          .collection('notifications')
+          .where('notificationBy', isEqualTo: PrefUtils.getId())
+          .where('type', isEqualTo: NotificationType.Like.name)
+          .where('createdAt', isGreaterThanOrEqualTo: '$todayDate 00:00:00')
+          .where('createdAt', isLessThanOrEqualTo: '$todayDate 23:59:59')
+          .get()
+          .then((value) {
+        List<QueryDocumentSnapshot> data = value.docs;
+        List<NotificationModel> notifications = <NotificationModel>[];
+        notifications.clear();
+        notifications = data
+            .map((e) =>
+                NotificationModel.fromJson(e.data() as Map<String, dynamic>))
+            .toList();
+        print("Today likes:=> ${notifications.length}");
+        return notifications.length;
+      });
+    } catch (e) {
+      log('Error during get today Likes', error: e);
+      return 0;
+    }
+  }
+
+  static Future<bool> getIsAccountDeleted(String receiverId) async {
+    return await _firestore
+        .collection('users')
+        .doc(receiverId)
+        .get()
+        .then((value) {
+      UserModel userModel = UserModel();
+      userModel = UserModel.fromJson(value.data() as Map<String, dynamic>);
+      print("isAccountDeleted=> ${userModel.isAccountDeleted}");
+      return userModel.isAccountDeleted ?? false;
+    });
+  }
+
+  static Future<bool> isLikedMe(String otherUserId) async {
+    try {
+      return _firestore
+          .collection('notifications')
+          .where('notificationBy', isEqualTo: otherUserId)
+          .where('notificationTo', isEqualTo: PrefUtils.getId())
+          .where('type', isEqualTo: NotificationType.Like.name)
+          .get()
+          .then((value) {
+        List<QueryDocumentSnapshot> data = value.docs;
+        List<NotificationModel> notifications = <NotificationModel>[];
+        notifications.clear();
+        notifications = data
+            .map((e) =>
+                NotificationModel.fromJson(e.data() as Map<String, dynamic>))
+            .toList();
+        print("isLikedMe:=> ${notifications.length}");
+        return notifications.length > 0;
+      });
+    } catch (e) {
+      log('Error during get today Likes', error: e);
+      return false;
+    }
   }
 }

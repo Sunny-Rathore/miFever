@@ -23,7 +23,7 @@ class EditPersonalDetailsController extends GetxController {
       EditPersonalDetailsModel().obs;
 
   var selectedGender = 'Male'.obs;
-
+  var isCurrentLocation = PrefUtils.getIsCurrentLocation().obs;
   Rx<DateTime> initialDateTime =
       DateTime.now().subtract(Duration(days: 18 * 366)).obs;
   var selectedDate =
@@ -34,7 +34,6 @@ class EditPersonalDetailsController extends GetxController {
 
   void onTapContinue() async {
     ProgressDialogUtils.showProgressDialog();
-
     bool isAudioNotChange = recordedFilePath.value == user.value.nameAudio;
     UserModel userModel = UserModel(
         name: nameController.text.trim(),
