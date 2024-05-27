@@ -32,9 +32,7 @@ class LikedMePage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return SizedBox.shrink();
             }
-            // if (!snapshot.hasData) {
-            //   return SizedBox.shrink();
-            // }
+
             List<QueryDocumentSnapshot<Object?>> data =
                 snapshot.data?.docs ?? [];
             List<NotificationModel> notifications = <NotificationModel>[];
@@ -192,7 +190,10 @@ class LikedMePage extends StatelessWidget {
   }
 
   /// Section Widget
-  Widget _buildNotification(List notifications) {
+  Widget _buildNotification(List<NotificationModel> notifications) {
+    List<NotificationModel> likes = notifications
+        .where((element) => element.type == NotificationType.Like.name)
+        .toList();
     return ListView.separated(
       physics: NeverScrollableScrollPhysics(),
       shrinkWrap: true,
@@ -212,11 +213,10 @@ class LikedMePage extends StatelessWidget {
           ),
         );
       },
-      itemCount: notifications.length,
+      itemCount: likes.length,
       itemBuilder: (context, index) {
         return StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseServices.getUserById(
-                notifications[index].notificationBy),
+            stream: FirebaseServices.getUserById(likes[index].notificationBy),
             builder: (context, usersSnapshot) {
               if (usersSnapshot.connectionState == ConnectionState.waiting) {
                 return SizedBox(
@@ -232,8 +232,8 @@ class LikedMePage extends StatelessWidget {
                     ? _user.profileImage
                     : _user.wayAlbum![0])
                 ..notificationText = RxString(getNotificationText(
-                    notification: notifications[index], user: _user))
-                ..time = RxString(notifications[index].createdAt);
+                    notification: likes[index], user: _user))
+                ..time = RxString(likes[index].createdAt);
               return NotificationItemWidget(
                 model,
               );
